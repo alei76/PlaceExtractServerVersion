@@ -741,7 +741,9 @@ def second_layer_filter_addr(addr_list):
                     city_dic[x['city']] = 1
                 else:
                     city_dic[x['city']] += 1
-        elif x['tag'] == 'town' and x['town'] not in ["小镇", "弘道", "道路", "大路", "大道"]:
+        elif x['tag'] == 'town':
+            if x['town'] in ["小镇", "弘道", "道路", "大路", "大道"]:
+                continue
             if x['town'] not in town_dic.keys():
                 town_dic[x['town']] = 1
             else:
