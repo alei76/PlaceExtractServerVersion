@@ -11,6 +11,7 @@ heBei_country_above = os.path.join(path_m, "HeBei_Country_Above.txt")
 wgyd_excel_file = os.path.join(path_m, "五高一地.xlsx")
 ignore_word = os.path.join(path_m, "ignore.txt")
 addi_word = os.path.join(path_m, "addition.txt")
+replace_word_pair = os.path.join(path_m, "replace.txt")
 
 database_ip = "localhost"
 database_user = "root"

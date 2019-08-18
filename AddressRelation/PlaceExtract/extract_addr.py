@@ -19,9 +19,10 @@ invalid_pos = ['u', 'v', 'e', 'y', 'o', 'w', 'b', 'r', 'eng']
 self_pos_set = ['city', 'area', 'town', 'village', 'station']
 
 # 房地产列表
-BX_0 = ['宿舍楼', '宿舍', '大厦', '苑', '写字楼', '商务中心', '小区', '花园', '图书馆', '博物馆', '广场', '步行街', '座', '都市',
-        '别墅', '住宅', '住宅楼', '家属楼', '龙城', '大学城', '城', '新村', '会展中心', '商务', '社区', '园区', '产业园', '创业园',
-        '基地', '工业区', '示范园', '示范区', '湾', '港', '家园', '庭', "工业园", "金贸", "经贸", "巷", "堡", "家属院"]
+BX_0 = ['宿舍楼', '宿舍', '大厦', '苑', '写字楼', '商务中心', '小区', '花园', '图书馆', '博物馆', '广场', '步行街', '座', '都市', '百货',
+        '别墅', '住宅', '住宅楼', '家属楼', '家属院', '龙城', '大学城', '城', '新村', '会展中心', '商务', '社区', '园区', '产业园', '创业园',
+        '基地', '工业区', '示范园', '示范区', '湾', '港', '家园', '庭', "工业园", "金贸", "经贸", "巷", "堡", "家属院", "百货大楼", "百货大厦",
+        "汽车城", "商务楼"]
 # 公司企业
 BX_1 = ['公司', '事务所', '律师所', '工厂', '旅行社', '旅游局', '印刷厂', '厂', '火场']
 # 教育培训
@@ -62,12 +63,12 @@ school_region = [u'南校区', u'北校区', u'东校区', u'北校区', u'中�
 
 number_list = [u'零', u'一', u'二', u'三', u'四', u'五', u'六', u'七', u'八', u'九', u'十', u'幺']
 
-
 # 干扰数字删除
 d_p1 = re.compile("([零一二三四五六七八九十百幺]{6,})|(一万零一号)|(之前的一百[一二三四五六七八九十零]{1,3}号)|"
                   "(请到[一二三四五六七八九十]{1,2}号)|(打一万零一[转按选][一二三四五六七八九十零]号)|"
                   "([一二三四五六七八九十零]号几点)|(幺号码)|(打一万零[转按选][一二三四五六七八九十零]号)|"
-                  "(ip[一二三四五六七八九十零]{1,3}号)")
+                  "(ip[一二三四五六七八九十零幺]{1,3}号)|(工号[是为]?[一二三四五六七八九十零]{1,9}号)|"
+                  "ip(.){0,10}[一二三四五六七八九十零幺]{3,20}")
 # 优先级(一级二级分类-->后期优化的详细过滤选择)
 '''
 location_priority = ["房地产-住宅区", "教育培训-高等院校", "购物-百货商场", "购物-购物中心", "医疗-综合医院", "旅游景点-动物园",
@@ -103,6 +104,9 @@ class AddrInfoExtract:
         word, pos = self.fetch_data()
         if word == 'NULL' and pos == 'NULL':
             return  # 识别结束
+        # 直接终止进入下一个
+        elif word in ["公司", "小区", "村子"]:
+            return
         elif pos == 'province':
             self.module_entrance()
         elif pos == 'city':
@@ -485,7 +489,8 @@ class AddrInfoExtract:
                 self.__recog_city_from_name()
                 if self.__vital_dic['name'] in ["国民党", "校园", "园区", "花园", "大银行", "公园", "公园小区", "中村",
                                                 "书城", "片区", "家庭", "商场", "商城", "农村", "寒山", "法庭", "法院",
-                                                "共产党", "小区", "小区小区", "东区", "南区", "西区", "北区", "新区", "县区"]:
+                                                "共产党", "小区", "小区小区", "东区", "南区", "西区", "北区", "新区", "县区",
+                                                "小镇", "长城", "省公司", "市公司", "县公司"]:
                     self.__vital_dic["name"] = ""
                 if len(self.__vital_dic['name']) >= 3 and self.__vital_dic['name'][-1] == "区" and self.__vital_dic[
                                                                                                       'name'][-3:] in \
@@ -505,8 +510,12 @@ class AddrInfoExtract:
                         addr_list[-1]['name'] += self.__vital_dic['name']
                         self.__vital_dic.clear()
                         continue
-                if len(self.__vital_dic['name']) >= 4 and self.__vital_dic['name'][0:2] in ['小区', '公寓']:
+                if len(self.__vital_dic['name']) >= 4 and self.__vital_dic['name'][0:2] in ['小区', '公寓', '县城', "记录"]:
                     self.__vital_dic['name'] = self.__vital_dic['name'][2:]
+                if "town" in self.__vital_dic.keys() and len(self.__vital_dic['town']) >= 4 and self.__vital_dic[
+                                                                                                    'town'][0:2] in [
+                    '小区', '公寓', '县城']:
+                    self.__vital_dic['town'] = self.__vital_dic['town'][2:]
                 if len(self.__vital_dic['name']) >= 4 and self.__vital_dic['name'][0] in ['村', '区', '好', '姐']:
                     self.__vital_dic['name'] = self.__vital_dic['name'][1:]
                 self.__vital_dic['signal'] = self.__complete_signal
@@ -671,6 +680,25 @@ def add_school_split_region(addr_list, region_name):
     return addr_list
 
 
+# 补充小区/国际尾缀
+def append_district(addr_list, init_content):
+    if len(addr_list) == 0:
+        return addr_list
+    else:
+        for index, item in enumerate(addr_list):
+            if "name" in item.keys() and item["tag"] not in ["city", "area", "town", "village"]:
+                if len(item["name"]) >= 2 and (item["name"] + "小区") in init_content and "小区" not in item["name"]:
+                    addr_list[index]["name"] += "小区"
+                    addr_list[index]["add_tag"] = "小区"
+                elif len(item["name"]) >= 2 and (item["name"] + "国际") in init_content and "国际" not in item["name"]:
+                    addr_list[index]["name"] += "国际"
+                elif index > 0 and addr_list[index - 1]["tag"] == "village" and addr_list[index - 1]["name"][-1] in ["村", "庄"] and \
+                        item["tag"] not in ["city", "area", "town", "village"] and item["name"][-1] in ["寺", "堂", "祠"]:
+                    if (addr_list[index - 1]["name"] + item["name"]) in init_content:
+                        addr_list[index]["name"] = addr_list[index - 1]["name"] + addr_list[index]["name"]
+        return addr_list
+
+
 # 读取待处理字符串,识别地点列表
 # param:需要处理的字符串
 # return: 地址
@@ -681,14 +709,13 @@ def get_location(text):
     sentences = text.split('A_')
     for _x in sentences:
         addr_get_object = AddrInfoExtract()
-        item = addr_get_object.get_addr(_x.replace("株洲", "涿州").replace("麓北", "路北").replace("定心县", "定兴县").replace(
-            "寒山区", "邯山区"))
+        item = addr_get_object.get_addr(_x)
         # print(item)
         if len(item) > 0:
             addr_list.extend(item)
     # 对话地址筛选
     # print(addr_list)
-    addr = complete_and_wgyd_rec(second_layer_filter_addr(addr_list))
+    addr = complete_and_wgyd_rec(second_layer_filter_addr(append_district(addr_list, text)))
     return addr
 
 
@@ -730,7 +757,12 @@ def second_layer_filter_addr(addr_list):
     for x in addr_list:
         if x['tag'] == 'place' or 'station' in x['tag'] or x['tag'] == 'village':
             station_list.append(x)
-            # 加强性检查,如果有市/县,则加入区域dic
+            # 加强性检查,如果有市/县/镇,则加入区域dic
+            if 'town' in x.keys() and x['town'] != '' and x['town'][-1] in ['镇', '乡', '街', '路']:
+                if x['town'] not in town_dic.keys():
+                    town_dic[x['town']] = 1
+                else:
+                    town_dic[x['town']] += 1
             if 'area' in x.keys() and x['area'] != '':
                 if x['area'] not in area_dic.keys():
                     area_dic[x['area']] = 1
@@ -858,6 +890,14 @@ def interface_interaction(content):
     if 'station' in pre_dic['tag'] or 'place' in pre_dic['tag'] or 'village' in pre_dic['tag']:
         return_dic['place_area'] = pre_dic['name']
     return_dic['window_place'] = pre_dic['wgyd_code']
+    # 当区域词不存在且street是某某街 某某路的时候, 查询是否存在类似“秦皇西大街九号”、“新兴路二十四号”这种
+    if return_dic['place_area'] == "" and pre_dic["town"] != "" and pre_dic["town"][-1] in ["路", "街"]:
+        road_region_p = re.compile("%s[一二三四五六七八九十百]{1,5}号(附近)?" % pre_dic["town"])
+        m = re.search(road_region_p, content)
+        if m is not None:
+            return_dic['place_area'] = m.group(0)
+            pre_dic['tag'] = "station0_7"
+            content = content.replace(m.group(0), "")
     # 根据pre_dic中的字段对return_dic进行补充
     keys = pre_dic.keys()
     if 'city' in keys:
@@ -882,7 +922,7 @@ def interface_interaction(content):
         lis1 = ['公司', '大厦', '学校', '学院', '校区', '大学', '酒店', '公园', '厂', '都市', '科技园', '贸',
                 '小学', '幼儿园', '中学', '初中', '高中', '城', '所', '办', '处', '站', '馆', '宫', '场', '一中', '二中']
         lis2 = ['区', '家园', '花园', '府', '苑', '公寓', '宿舍', '墅', '住宅', '院', '楼', '园区', '巷', '庭', '湾', "堡",
-                '新村', "光华", "明珠", "万达", '景园']
+                '新村', "光华", "明珠", "万达", '景园', '百货']
         for x in lis1:
             if len(name) >= len(x) and name[-len(x):] == x:
                 m = building_labeling(content)
@@ -915,7 +955,6 @@ def interface_interaction(content):
 
 # 场所标注函数
 def building_labeling(content):
-
     content = re.sub(d_p1, "", content)
 
     p1 = re.compile("((([A-Z]?[零一二三四五六七八九十幺])|([零一二三四五六七八九十幺]+))座)|([零一二三四五六七八九十幺]+((号楼)|号))")
@@ -951,7 +990,6 @@ def building_labeling(content):
 
 
 def housing_labeling(content):
-
     content = re.sub(d_p1, "", content)
 
     p1 = re.compile("([零一二三四五六七八九十百幺])+(号楼|[栋幢])")

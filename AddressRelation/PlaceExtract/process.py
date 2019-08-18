@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 # author:menghuanlater
 
+import json
 import operator
 import Levenshtein
 import sqlite3
@@ -298,6 +299,8 @@ def get_second_region_name(area):
 # param:n
 # return:bool
 def street_road_judge(target):
+    if target in ["楼道", "小区楼道"]:
+        return False
     for i in street_road:
         if len(target) >= len(i) and target[-len(i):] == i:
             return True
@@ -322,6 +325,9 @@ def station_complete(station_dic):
     # 先对city area字段进行标准化处理, 沧州-沧州市, 不处理后面的查询可能会查不到数据
     station_dic['city'] = get_standard_administration_name(station_dic['city'])
     station_dic['area'] = get_standard_administration_name(station_dic['area'])
+    name_copy = station_dic["name"]
+    if "add_tag" in station_dic.keys():
+        station_dic["name"] = station_dic["name"][0: len(station_dic["name"]) - len(station_dic["add_tag"])]
     if station_dic['city'] == '':
         if station_dic['area'] == '':
             if station_dic['town'] == '':
@@ -418,6 +424,7 @@ def station_complete(station_dic):
                         "area = '%s' and town = '%s' and village = '%s' group by city,area" % (
                             station_dic['name'], station_dic['city'], station_dic['area'], station_dic['town'],
                             station_dic['village'])).fetchall()
+    station_dic["name"] = name_copy
     if len(result) == 1:
         choose = result[0]
         station_dic['city'] = choose[0]
