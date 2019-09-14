@@ -90,3 +90,12 @@
 器材厂宿舍 100 n
 厂宿舍 100 n
 水仙花都 100 station0_2
+手机厂 100 n
+洛城垣 100 station0_3
+后代庄 100 station2_0
+商城北门 100 station2_0
+商城东门 100 station2_0
+商城南门 100 station2_0
+商城西门 100 station2_0
+洪堡乡 100 town
+屈家庄村 100 village

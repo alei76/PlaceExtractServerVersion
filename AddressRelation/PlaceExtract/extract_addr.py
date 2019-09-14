@@ -22,7 +22,7 @@ self_pos_set = ['city', 'area', 'town', 'village', 'station']
 BX_0 = ['宿舍楼', '宿舍', '大厦', '苑', '写字楼', '商务中心', '小区', '花园', '图书馆', '博物馆', '广场', '步行街', '座', '都市', '百货',
         '别墅', '住宅', '住宅楼', '家属楼', '家属院', '龙城', '大学城', '城', '新村', '会展中心', '商务', '社区', '园区', '产业园', '创业园',
         '基地', '工业区', '示范园', '示范区', '湾', '港', '家园', '庭', "工业园", "金贸", "经贸", "巷", "堡", "家属院", "百货大楼", "百货大厦",
-        "汽车城", "商务楼"]
+        "汽车城", "商务楼", '公寓']
 # 公司企业
 BX_1 = ['公司', '事务所', '律师所', '工厂', '旅行社', '旅游局', '印刷厂', '厂', '火场']
 # 教育培训
@@ -41,7 +41,7 @@ BX_6 = ['加油站', '加气战', '收费站', '港口', '码头', '服务区', 
 # 休闲娱乐
 BX_7 = ['ktv', 'KTV', '电影院', '网吧', '网咖', '音乐厅', '歌舞厅', '台球', '游戏厅', '会所', '养生馆', '会馆', '体育馆', '体育场']
 # 酒店
-BX_8 = ['宾馆', '酒店', '旅社', '旅舍', '招待所', '公寓']
+BX_8 = ['宾馆', '酒店', '旅社', '旅舍', '招待所']
 # 美食
 BX_9 = ['饭店', '餐馆', '快餐店', '餐厅', '咖啡厅', '酒吧', '茶楼', '甜品店', '蛋糕', '汉堡', '肯德基', '麦当劳', '金拱门',
         '必胜客', '披萨']
@@ -68,7 +68,8 @@ d_p1 = re.compile("([零一二三四五六七八九十百幺]{6,})|(一万零一
                   "(请到[一二三四五六七八九十]{1,2}号)|(打一万零一[转按选][一二三四五六七八九十零]号)|"
                   "([一二三四五六七八九十零]号几点)|(幺号码)|(打一万零[转按选][一二三四五六七八九十零]号)|"
                   "(ip[一二三四五六七八九十零幺]{1,3}号)|(工号[是为]?[一二三四五六七八九十零]{1,9}号)|"
-                  "ip(.){0,10}[一二三四五六七八九十零幺]{3,20}")
+                  "(ip(.){0,10}[一二三四五六七八九十零幺]{3,20})|([一二三四五六七八九十零]{1,3}号公寓)|"
+                  "((登[录|陆])[一二三四五六七八九十零百拾]号)")
 # 优先级(一级二级分类-->后期优化的详细过滤选择)
 '''
 location_priority = ["房地产-住宅区", "教育培训-高等院校", "购物-百货商场", "购物-购物中心", "医疗-综合医院", "旅游景点-动物园",
@@ -268,8 +269,13 @@ class AddrInfoExtract:
             self.__vital_dic['name'] = word
             self.village_module()
         elif 'station' in pos:
+            m = deepcopy(self.__vital_dic)
             self.__vital_dic['tag'] = pos
             self.__vital_dic['name'] = word
+            if len(word) <= 2:
+                self.__copy_dic = deepcopy(self.__vital_dic)
+                self.__vital_dic = m
+                self.addr_module(word, pos)
         elif (pos in ['city', 'area', 'town', 'province']) or (pos in prob_pos):
             self.addr_module(word, pos)
         else:
@@ -343,7 +349,7 @@ class AddrInfoExtract:
                 self.town_module()
             # 是否为”曼城“之类的城市地点或者村/小区
             elif len(self.__global_str) >= 2 and self.__global_str[-1] in ['城', '园', '厦', '苑', '寓', '区', '村', '庭', '湾',
-                                                                           '巷',
+                                                                           '巷', '铺', '垣',
                                                                            "堡"]:
                 # 加强判断
                 if self.__global_str in ['小区', '花园', '公寓', '庄园', '大厦', '公园', '社区', '地区', '县城', '市区', '乡村']:
@@ -359,7 +365,7 @@ class AddrInfoExtract:
             self.__vital_dic['name'] = self.__global_str
             self.__vital_dic['tag'] = 'place'
             return
-        if pos in ['a', 'nr', 'ns', 'm', 'city', 'area', 'province', 'j', 'nz']:
+        if pos in ['a', 'nr', 'ns', 'm', 'city', 'area', 'province', 'j', 'nz', 'mq']:
             self.__global_str += word
             if pos == "city":
                 self.__vital_dic['city'] = word
@@ -404,7 +410,7 @@ class AddrInfoExtract:
             self.town_module()
         # 是否为”曼城“之类的城市地点,针对上层传入的ns类短地点
         elif len(self.__global_str) >= 2 and self.__global_str[-1] in ['城', '园', '厦', '苑', '寓', '区', '村', '湾', '庭', '巷',
-                                                                       "堡"]:
+                                                                       "堡", '铺', '垣']:
             if self.__global_str in ['小区', '花园', '公寓', '庄园', '大厦', '公园', '社区', '地区', '县城', '市区', '乡村']:
                 return
             self.__vital_dic['name'] = self.__global_str
@@ -420,7 +426,7 @@ class AddrInfoExtract:
                 self.__global_str = ""
                 self.town_module()
         elif self.contain_station_suffix(obj):
-            if mode or len(obj) >= 4:
+            if (mode and len(obj) > 1) or len(obj) >= 4:
                 self.__vital_dic['name'] = self.__global_str
                 self.__global_str = ""
                 self.__vital_dic['tag'] = 'place'
@@ -490,7 +496,8 @@ class AddrInfoExtract:
                 if self.__vital_dic['name'] in ["国民党", "校园", "园区", "花园", "大银行", "公园", "公园小区", "中村",
                                                 "书城", "片区", "家庭", "商场", "商城", "农村", "寒山", "法庭", "法院",
                                                 "共产党", "小区", "小区小区", "东区", "南区", "西区", "北区", "新区", "县区",
-                                                "小镇", "长城", "省公司", "市公司", "县公司"]:
+                                                "小镇", "长城", "省公司", "市公司", "县公司", "苑", "城市", "城区", "县城",
+                                                "家园"]:
                     self.__vital_dic["name"] = ""
                 if len(self.__vital_dic['name']) >= 3 and self.__vital_dic['name'][-1] == "区" and self.__vital_dic[
                                                                                                       'name'][-3:] in \
@@ -510,11 +517,12 @@ class AddrInfoExtract:
                         addr_list[-1]['name'] += self.__vital_dic['name']
                         self.__vital_dic.clear()
                         continue
-                if len(self.__vital_dic['name']) >= 4 and self.__vital_dic['name'][0:2] in ['小区', '公寓', '县城', "记录"]:
+                if len(self.__vital_dic['name']) >= 4 and self.__vital_dic['name'][0:2] in ['小区', '公寓', '县城', "记录",
+                                                                                            "西区", "南区", "北区", "东区"]:
                     self.__vital_dic['name'] = self.__vital_dic['name'][2:]
                 if "town" in self.__vital_dic.keys() and len(self.__vital_dic['town']) >= 4 and self.__vital_dic[
                                                                                                     'town'][0:2] in [
-                    '小区', '公寓', '县城']:
+                    '小区', '公寓', '县城', "西区", "南区", "北区", "东区"]:
                     self.__vital_dic['town'] = self.__vital_dic['town'][2:]
                 if len(self.__vital_dic['name']) >= 4 and self.__vital_dic['name'][0] in ['村', '区', '好', '姐']:
                     self.__vital_dic['name'] = self.__vital_dic['name'][1:]
@@ -692,7 +700,8 @@ def append_district(addr_list, init_content):
                     addr_list[index]["add_tag"] = "小区"
                 elif len(item["name"]) >= 2 and (item["name"] + "国际") in init_content and "国际" not in item["name"]:
                     addr_list[index]["name"] += "国际"
-                elif index > 0 and addr_list[index - 1]["tag"] == "village" and addr_list[index - 1]["name"][-1] in ["村", "庄"] and \
+                elif index > 0 and addr_list[index - 1]["tag"] == "village" and addr_list[index - 1]["name"][-1] in [
+                    "村", "庄"] and \
                         item["tag"] not in ["city", "area", "town", "village"] and item["name"][-1] in ["寺", "堂", "祠"]:
                     if (addr_list[index - 1]["name"] + item["name"]) in init_content:
                         addr_list[index]["name"] = addr_list[index - 1]["name"] + addr_list[index]["name"]
@@ -826,7 +835,7 @@ def second_layer_filter_addr(addr_list):
                 station_list[0]['area'] = assembly['area']
             elif station_list[0]['city'] == "":
                 station_list[0]['area'] = assembly['area']
-        return station_list[0]
+        return handle_extra_prefix(station_list[0])
     elif len(station_list) < 1:
         if len(town_dic) > 0:
             return {'tag': 'town', 'city': assembly['city'], 'area': assembly['area'], 'town': assembly['town'],
@@ -873,7 +882,33 @@ def second_layer_filter_addr(addr_list):
             target['area'] = assembly['area']
         if ('town' not in target.keys()) or target['town'] == "":
             target['town'] = assembly['town']
-        return target
+        return handle_extra_prefix(target)
+
+
+# 处理小区词前面的多余赘述问题
+def handle_extra_prefix(station_dic):
+    if station_dic["name"] == "" and len(station_dic["name"] <= 4):
+        return station_dic
+    extra_num_p = re.compile("[零一二三四五六七八九十百]{1,5}号")
+    m = re.search(extra_num_p, station_dic["name"])
+    if m is not None and m.start() == 0:
+        station_dic["name"] = station_dic["name"].replace(m.group(0), "")
+    if station_dic["name"][-2:] not in ["学校", "大学", "学院", "中学", "小学", "高中", "职高"] and len(station_dic["name"]) >= 6:
+        # station_dic["name"] = station_dic["name"].replace(station_dic["city"], "").replace(station_dic["area"], "")
+        if station_dic["city"] != "" and station_dic["city"] in station_dic["name"]:
+            index = station_dic["name"].rfind(station_dic["city"])
+            if len(station_dic["name"]) - index >= 3:
+                station_dic["name"] = station_dic["name"][index+len(station_dic["city"]):]
+        if station_dic["city"] != "" and station_dic["city"] not in station_dic["name"] and \
+                station_dic["city"][0:len(station_dic["city"])-1] in station_dic["name"]:
+            index = station_dic["name"].rfind(station_dic["city"][0:len(station_dic["city"])-1])
+            if len(station_dic["name"]) - index >= 3:
+                station_dic["name"] = station_dic["name"][index + len(station_dic["city"]) - 1:]
+        if station_dic["area"] != "" and station_dic["area"] in station_dic["name"]:
+            index = station_dic["name"].rfind(station_dic["area"])
+            if len(station_dic["name"]) - index >= 3:
+                station_dic["name"] = station_dic["name"][index + len(station_dic["area"]):]
+    return station_dic
 
 
 # 与接口交互数据的函数
@@ -886,7 +921,7 @@ def interface_interaction(content):
                   'place_orientation': '', 'window_place': ''}
     if len(pre_dic) == 0:
         return return_dic
-    # TODO:路和街道怎么处理,他们都是town
+    # 路和街道的处理,他们都是town
     if 'station' in pre_dic['tag'] or 'place' in pre_dic['tag'] or 'village' in pre_dic['tag']:
         return_dic['place_area'] = pre_dic['name']
     return_dic['window_place'] = pre_dic['wgyd_code']
@@ -919,7 +954,7 @@ def interface_interaction(content):
         noise_p = re.compile("(客服中心)[一二三四五六七八九十零]+号")
         content = re.sub(noise_p, "", content)
         name = pre_dic['name']
-        lis1 = ['公司', '大厦', '学校', '学院', '校区', '大学', '酒店', '公园', '厂', '都市', '科技园', '贸',
+        lis1 = ['公司', '大厦', '学校', '学院', '校区', '大学', '酒店', '公园', '厂', '都市', '科技园', '贸', '公寓',
                 '小学', '幼儿园', '中学', '初中', '高中', '城', '所', '办', '处', '站', '馆', '宫', '场', '一中', '二中']
         lis2 = ['区', '家园', '花园', '府', '苑', '公寓', '宿舍', '墅', '住宅', '院', '楼', '园区', '巷', '庭', '湾', "堡",
                 '新村', "光华", "明珠", "万达", '景园', '百货']
@@ -998,7 +1033,7 @@ def housing_labeling(content):
     p3 = re.compile("(([零一二三四五六七八九十百幺])+(层|层楼|楼))|((地下|负)[零一二三四五六七八九十幺]+层)")
     p31 = re.compile("[一二三四五六七八九幺]{1,2}零[一二三四五六七八九幺]")
     p32 = re.compile("([幺一二][零一二])零[一二三四五六七八九十百幺]{1,2}")
-    p4 = re.compile("厨房|楼道|客厅|地下车库|车库|卧室|卫生间|阳台|书房|[东南西北中][门]")
+    p4 = re.compile("厨房|楼道|客厅|地下车库|车库|卧室|卫生间|阳台|书房|[东南西北中][门]|门口")
     m1 = re.search(p1, content)
     m11 = re.search(p11, content)
     m2 = re.search(p2, content)
