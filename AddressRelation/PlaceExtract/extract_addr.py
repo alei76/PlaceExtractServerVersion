@@ -24,7 +24,7 @@ BX_0 = ['宿舍楼', '宿舍', '大厦', '苑', '写字楼', '商务中心', '�
         '基地', '工业区', '示范园', '示范区', '湾', '港', '家园', '庭', "工业园", "金贸", "经贸", "巷", "堡", "家属院", "百货大楼", "百货大厦",
         "汽车城", "商务楼", '公寓']
 # 公司企业
-BX_1 = ['公司', '事务所', '律师所', '工厂', '旅行社', '旅游局', '印刷厂', '厂', '火场']
+BX_1 = ['公司', '事务所', '律师所', '工厂', '旅行社', '旅游局', '印刷厂', '厂', '火场', "培训中心"]
 # 教育培训
 BX_2 = ['美术馆', '大学', '中学', '小学', '学院', '学校', '初中', '高中', '幼儿园', '学前班', '科技馆', '教育', '早教',
         '学会', '函授站']
@@ -159,7 +159,7 @@ class AddrInfoExtract:
                 self.module_entrance()
             else:
                 self.addr_module(name, 'ns')
-        elif pos in prob_pos:
+        elif pos in prob_pos or (pos == "f" and word in ["东", "西", "南", "北"]):
             self.__complete_signal = True
             self.addr_module(word, pos)
         else:
@@ -204,7 +204,7 @@ class AddrInfoExtract:
                 self.__copy_dic = deepcopy(self.__vital_dic)
                 self.__vital_dic = m
                 self.addr_module(word, pos)
-        elif (pos in ['city', 'province']) or (pos in prob_pos):
+        elif (pos in ['city', 'province']) or (pos in prob_pos or (pos == "f" and word in ["东", "西", "南", "北"])):
             self.__complete_signal = True
             self.addr_module(word, pos)
         else:
@@ -244,7 +244,7 @@ class AddrInfoExtract:
                 self.__copy_dic = deepcopy(self.__vital_dic)
                 self.__vital_dic = m
                 self.addr_module(word, pos)
-        elif (pos in ['city', 'area', 'province']) or (pos in prob_pos):
+        elif (pos in ['city', 'area', 'province']) or (pos in prob_pos or (pos == "f" and word in ["东", "西", "南", "北"])):
             self.__complete_signal = True
             self.addr_module(word, pos)
         else:
@@ -276,7 +276,7 @@ class AddrInfoExtract:
                 self.__copy_dic = deepcopy(self.__vital_dic)
                 self.__vital_dic = m
                 self.addr_module(word, pos)
-        elif (pos in ['city', 'area', 'town', 'province']) or (pos in prob_pos):
+        elif (pos in ['city', 'area', 'town', 'province']) or (pos in prob_pos or (pos == "f" and word in ["东", "西", "南", "北"])):
             self.addr_module(word, pos)
         else:
             return
@@ -302,11 +302,11 @@ class AddrInfoExtract:
         self.__global_str = prefix
         if attribute in ['province', 'city', 'town', 'area', 'village', 'nt']:
             self.__vital_dic['name'] = prefix
-        if attribute in ['province', 'city', 'town', 'area', 'village', 'ns', 'a', 'nz', 'nr', 'j']:
+        if attribute in ['province', 'city', 'town', 'area', 'village', 'ns', 'a', 'nz', 'nr', 'j', 'ag', 'f']:
             if attribute in ['nr', 'nz']:
                 tmp_out = thulac_obj.cut(prefix)
                 if len(tmp_out) != 1 and tmp_out[0][1] not in [
-                    attribute, 'n', 'np', 'ni', 'nz', 'ns', 's', 'a', 'j', 'g', 'f'] and self.__m_and_q(tmp_out) and \
+                    attribute, 'n', 'np', 'ni', 'nz', 'ns', 's', 'a', 'j', 'g', 'f', 'ag'] and self.__m_and_q(tmp_out) and \
                         tmp_out[1][1] not in ['n', 'ns', 'np', 'nz', 'ni']:
                     return
                 else:
@@ -321,7 +321,7 @@ class AddrInfoExtract:
             tmp_out = thulac_obj.cut(prefix)
             if len(tmp_out) > 1 and tmp_out[0][1] != 'a' and self.__m_and_q(tmp_out):
                 return
-            if tmp_out[0][1] in ['ns', 'n', 'ni', 'nz', 'f', 'j', 'a', 'g'] or (
+            if tmp_out[0][1] in ['ns', 'n', 'ni', 'nz', 'f', 'j', 'a', 'g', 'ag', 's'] or (
                     len(tmp_out) > 1 and tmp_out[1][1] in ['n', 'ns', 'np', 'nz', 'ni']):
                 self.state_s1()
             elif tmp_out[0][1] not in ['nt', 's'] and self.__m_and_q(tmp_out):
@@ -365,7 +365,7 @@ class AddrInfoExtract:
             self.__vital_dic['name'] = self.__global_str
             self.__vital_dic['tag'] = 'place'
             return
-        if pos in ['a', 'nr', 'ns', 'm', 'city', 'area', 'province', 'j', 'nz', 'mq']:
+        if pos in ['a', 'nr', 'ns', 'm', 'city', 'area', 'province', 'j', 'nz', 'mq', 'ag', 'f']:
             self.__global_str += word
             if pos == "city":
                 self.__vital_dic['city'] = word
@@ -373,7 +373,7 @@ class AddrInfoExtract:
                 self.__vital_dic['area'] = word
             if pos in ['ns', 'nr', 'nz']:
                 tmp = thulac_obj.cut(word)
-                if len(tmp) != 1 and tmp[0][1] not in ['a', 'n', 'ni', 'nz', 'ns', 'np', 'f', 's', 'j', 'g', 'ng'] \
+                if len(tmp) != 1 and tmp[0][1] not in ['a', 'n', 'ni', 'nz', 'ns', 'np', 'f', 's', 'j', 'g', 'ng', 'ag'] \
                         and self.__m_and_q(tmp) and tmp[1][1] not in ['n', 'ns', 'np', 'nz', 'ni']:
                     self.__global_str = ""
                     return
@@ -396,9 +396,9 @@ class AddrInfoExtract:
             else:
                 self.__vital_dic['tag'] = 'place'
                 self.state_s1()
-        elif pos in ['n', 'ng']:
+        elif pos in ['n', 'ng'] and re.search(re.compile("[一二三四五六七八九十]号(楼|层|单元|座)"), word) is None:
             tmp_out = thulac_obj.cut(word)
-            if len(tmp_out) != 1 and tmp_out[0][1] not in ['n', 'np', 'ni', 'nz', 'ns', 'j', 'g', 'f', 'a', 'ng'] \
+            if len(tmp_out) != 1 and tmp_out[0][1] not in ['n', 'np', 'ni', 'nz', 'ns', 'j', 'g', 'f', 'a', 'ng', 'ag'] \
                     and self.__m_and_q(tmp_out) and tmp_out[1][1] not in ['n', 'ns', 'np', 'nz', 'ni']:
                 return
             self.__global_str += word
@@ -497,7 +497,7 @@ class AddrInfoExtract:
                                                 "书城", "片区", "家庭", "商场", "商城", "农村", "寒山", "法庭", "法院",
                                                 "共产党", "小区", "小区小区", "东区", "南区", "西区", "北区", "新区", "县区",
                                                 "小镇", "长城", "省公司", "市公司", "县公司", "苑", "城市", "城区", "县城",
-                                                "家园"]:
+                                                "家园", "家村", "家庄"]:
                     self.__vital_dic["name"] = ""
                 if len(self.__vital_dic['name']) >= 3 and self.__vital_dic['name'][-1] == "区" and self.__vital_dic[
                                                                                                       'name'][-3:] in \
